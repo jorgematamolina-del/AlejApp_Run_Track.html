@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlejApp Run Track | Control de trote</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --accent-cyan: #00f2fe;
+            --accent-purple: #b624ff;
+            --text-main: #e0e6ed;
+            --text-dim: #94a3b8;
+            --error: #ff4d4d;
+            --success: #00ff88;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3 { font-family: 'Poppins', sans-serif; color: var(--accent-cyan); }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        /* Glassmorphism Cards */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-glow { border: 1px solid rgba(0, 242, 254, 0.3); box-shadow: 0 0 15px rgba(0, 242, 254, 0.1); }
+
+        /* Forms */
+        .grid-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px; }
+        input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            transition: border 0.3s;
+        }
+        input:focus { border-color: var(--accent-cyan); }
+
+        button {
+            cursor: pointer;
+            padding: 12px 24px;
+            border-radius: 30px;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 242, 254, 0.4); }
+
+        /* Profile & Stats */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            text-align: center;
+        }
+        .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--accent-purple); }
+        .stat-label { font-size: 0.75rem; color: var(--text-dim); }
+
+        /* Widgets */
+        .widgets-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) { .widgets-container { grid-template-columns: 1fr; } }
+
+        .widget-card { font-style: italic; font-size: 0.9rem; border-left: 4px solid var(--accent-cyan); }
+
+        /* Charts */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 850px) { .charts-container { grid-template-columns: 1fr; } }
+        .chart-wrapper { position: relative; height: 300px; width: 100%; }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th { text-align: left; color: var(--text-dim); padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .btn-delete { color: var(--error); background: none; padding: 5px; font-size: 0.8rem; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header style="text-align: center; margin-bottom: 30px;">
+        <h1>ALEJAPP<span style="color: var(--accent-purple);">_RUN_TRACK</span></h1>
+        <p style="color: var(--text-dim);">Control diario de trote, nutrición y motivación</p>
+    </header>
+
+    <!-- Registro de Usuario (Solo si no existe) -->
+    <section id="registration-section" class="card hidden">
+        <h2>Configura tu Perfil</h2>
+        <p style="margin-bottom: 20px; color: var(--text-dim);">Introduce tus datos para calcular tu IMC y objetivos.</p>
+        <form id="user-form" class="grid-form">
+            <div class="input-group">
+                <label>Peso Actual (kg)</label>
+                <input type="number" id="reg-weight" step="0.1" required>
+            </div>
+            <div class="input-group">
+                <label>Altura (cm)</label>
+                <input type="number" id="reg-height" required>
+            </div>
+            <div class="input-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="date" id="reg-dob" required>
+            </div>
+            <div class="input-group" style="justify-content: flex-end;">
+                <button type="submit" class="btn-primary">Empezar</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Dashboard Principal -->
+    <div id="main-dashboard" class="hidden">
+        
+        <!-- Panel de Perfil -->
+        <section class="card card-glow">
+            <div class="profile-grid" id="profile-display">
+                <!-- Inyectado por JS -->
+            </div>
+        </section>
+
+        <!-- Formulario de Sesión -->
+        <section class="card">
+            <h3>Nueva Sesión</h3>
+            <form id="session-form" class="grid-form" style="margin-top: 15px;">
+                <div class="input-group">
+                    <label>Fecha</label>
+                    <input type="date" id="sess-date" required>
+                </div>
+                <div class="input-group">
+                    <label>Distancia (km)</label>
+                    <input type="number" id="sess-dist" step="0.01" required>
+                </div>
+                <div class="input-group">
+                    <label>Tiempo (min)</label>
+                    <input type="number" id="sess-time" required>
+                </div>
+                <div class="input-group">
+                    <label>Peso hoy (kg) <small>(opcional)</small></label>
+                    <input type="number" id="sess-weight" step="0.1">
+                </div>
+                <div class="input-group" style="justify-content: flex-end;">
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Gráficos -->
+        <section class="charts-container">
+            <div class="card">
+                <h3>Distancia (90 días)</h3>
+                <div class="chart-wrapper"><canvas id="distChart"></canvas></div>
+            </div>
+            <div class="card">
+                <h3>Evolución Peso (90 días)</h3>
+                <div class="chart-wrapper"><canvas id="weightChart"></canvas></div>
+            </div>
+        </section>
+
+        <!-- Widgets -->
+        <div class="widgets-container">
+            <div class="card widget-card" id="motivation-widget">
+                <!-- Inyectado por JS -->
+            </div>
+            <div class="card widget-card" id="nutrition-widget" style="border-left-color: var(--accent-purple);">
+                <!-- Inyectado por JS -->
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <section class="card">
+            <h3>Últimas Sesiones</h3>
+            <div style="overflow-x: auto;">
+                <table id="history-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Distancia</th>
+                            <th>Tiempo</th>
+                            <th>Peso</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+    /** 
+     * DATA CONSTANTS
+     */
+    const MOTIVATION_PHRASES = [
+        "¡Cada kilómetro cuenta!", "Tu único rival es quien eras ayer.", "No te detengas cuando estés cansado, detente cuando hayas terminado.",
+        "La disciplina es el puente entre metas y logros.", "Corre con el corazón, tus piernas te seguirán.", "El dolor es temporal, la gloria es eterna.",
+        "Un mal entrenamiento es aquel que no ocurrió.", "Pequeños pasos llevan a grandes distancias.", "Respira, corre, repite.",
+        "Tu cuerpo puede más de lo que tu mente cree.", "La constancia vence lo que la dicha no alcanza.", "No cuentes los kilómetros, haz que los kilómetros cuenten.",
+        "El éxito comienza con la decisión de intentarlo.", "Sigue adelante, la meta está más cerca de lo que crees.", "Eres más fuerte de lo que piensas."
+    ];
+
+    const NUTRITION_TIPS = [
+        "Incorpora espinacas y salmón para una recuperación muscular óptima.",
+        "Hidrátate con electrolitos después de sesiones intensas.",
+        "Consume avena antes de correr para energía sostenida.",
+        "No olvides las proteínas magras como el pollo o tofu tras el entrenamiento.",
+        "Las nueces y semillas son excelentes fuentes de grasas saludables.",
+        "Añade arándanos a tu desayuno para combatir la inflamación.",
+        "El plátano es tu mejor aliado para evitar calambres.",
+        "Bebe agua constantemente, no esperes a tener sed.",
+        "Las legumbres son una fuente increíble de hierro y fibra.",
+        "Prueba el yogur griego para un extra de proteína y probióticos.",
+        "El aguacate aporta energía duradera y grasas buenas.",
+        "Evita ultraprocesados antes de tus entrenamientos.",
+        "La quinoa es un superalimento para corredores.",
+        "Incorpora vegetales de hoja verde para mejorar la oxigenación.",
+        "El pescado azul es clave para la salud cardiovascular.",
+        "No descuides el magnesio; las semillas de calabaza son geniales.",
+        "La vitamina C ayuda a la absorción de hierro.",
+        "Consume carbohidratos complejos como el arroz integral.",
+        "El huevo es la proteína de referencia por su calidad.",
+        "Mantén un equilibrio entre macros para rendir al máximo."
+    ];
+
+    /**
+     * STATE MANAGEMENT
+     */
+    let state = {
+        userProfile: null,
+        sessions: []
+    };
+
+    let distChartInstance = null;
+    let weightChartInstance = null;
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFromLocalStorage();
+        initApp();
+    });
+
+    function loadFromLocalStorage() {
+        const savedProfile = localStorage.getItem('runtrack_profile');
+        const savedSessions = localStorage.getItem('runtrack_sessions');
+        
+        if (savedProfile) state.userProfile = JSON.parse(savedProfile);
+        if (savedSessions) state.sessions = JSON.parse(savedSessions);
+    }
+
+    function saveToLocalStorage() {
+        localStorage.setItem('runtrack_profile', JSON.stringify(state.userProfile));
+        localStorage.setItem('runtrack_sessions', JSON.stringify(state.sessions));
+    }
+
+    function initApp() {
+        if (!state.userProfile) {
+            document.getElementById('registration-section').classList.remove('hidden');
+        } else {
+            showDashboard();
+        }
+        updateWidgets();
+    }
+
+    /**
+     * USER PROFILE LOGIC
+     */
+    document.getElementById('user-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const weight = parseFloat(document.getElementById('reg-weight').value);
+        const height = parseFloat(document.getElementById('reg-height').value);
+        const dob = document.getElementById('reg-dob').value;
+
+        if (weight <= 0 || height <= 0) return alert("Por favor, ingresa valores válidos.");
+
+        const bmi = (weight / ((height / 100) ** 2)).toFixed(1);
+        const targetWeight = (22 * ((height / 100) ** 2)).toFixed(1);
+
+        state.userProfile = {
+            currentWeightKg: weight,
+            heightCm: height,
+            birthDate: dob,
+            targetBMI: 22,
+            targetWeightKg: targetWeight,
+            currentBMI: bmi
+        };
+
+        saveToLocalStorage();
+        document.getElementById('registration-section').classList.add('hidden');
+        showDashboard();
+    });
+
+    function showDashboard() {
+        document.getElementById('main-dashboard').classList.remove('hidden');
+        renderProfile();
+        renderHistory();
+        updateCharts();
+    }
+
+    function renderProfile() {
+        const p = state.userProfile;
+        const age = calculateAge(p.birthDate);
+        const container = document.getElementById('profile-display');
+        
+        container.innerHTML = `
+            <div><div class="stat-val">${p.currentBMI}</div><div class="stat-label">IMC Actual</div></div>
+            <div><div class="stat-val">${p.targetWeightKg}kg</div><div class="stat-label">Peso Objetivo</div></div>
+            <div><div class="stat-val">${p.currentWeightKg}kg</div><div class="stat-label">Peso</div></div>
+            <div><div class="stat-val">${age}</div><div class="stat-label">Edad</div></div>
+        `;
+    }
+
+    function calculateAge(dob) {
+        const diff = Date.now() - new Date(dob).getTime();
+        return Math.abs(new Date(diff).getUTCFullYear() - 1970);
+    }
+
+    /**
+     * SESSION LOGIC
+     */
+    document.getElementById('session-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const date = document.getElementById('sess-date').value;
+        const dist = parseFloat(document.getElementById('sess-dist').value);
+        const time = parseInt(document.getElementById('sess-time').value);
+        const weight = parseFloat(document.getElementById('sess-weight').value) || state.userProfile.currentWeightKg;
+
+        if (dist <= 0 || time <= 0) return alert("Valores inválidos.");
+
+        // Validar duplicados
+        const existingIdx = state.sessions.findIndex(s => s.date === date);
+        if (existingIdx !== -1) {
+            if (!confirm("Ya existe una sesión para esta fecha. ¿Deseas sobrescribirla?")) return;
+            state.sessions.splice(existingIdx, 1);
+        }
+
+        state.sessions.push({ date, distanceKm: dist, timeMinutes: time, weightKg: weight });
+        
+        // Actualizar peso en perfil si se ingresó uno nuevo
+        if (document.getElementById('sess-weight').value) {
+            state.userProfile.currentWeightKg = weight;
+            // Recalcular IMC
+            state.userProfile.currentBMI = (weight / ((state.userProfile.heightCm / 100) ** 2)).toFixed(1);
+        }
+
+        saveToLocalStorage();
+        renderProfile();
+        renderHistory();
+        updateCharts();
+        updateWidgets();
+        e.target.reset();
+        alert("¡Sesión guardada con éxito!");
+    });
+
+    function deleteSession(date) {
+        if (confirm("¿Eliminar esta sesión?")) {
+            state.sessions = state.sessions.filter(s => s.date !== date);
+            saveToLocalStorage();
+            renderHistory();
+            updateCharts();
+        }
+    }
+
+    function renderHistory() {
+        const tbody = document.querySelector('#history-table tbody');
+        tbody.innerHTML = '';
+        
+        // Mostrar las últimas 5 sesiones
+        const sorted = [...state.sessions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+        
+        sorted.forEach(s => {
+            const row = `<tr>
+                <td>${s.date}</td>
+                <td>${s.distanceKm} km</td>
+                <td>${s.timeMinutes} min</td>
+                <td>${s.weightKg} kg</td>
+                <td><button class="btn-delete" onclick="deleteSession('${s.date}')">Eliminar</button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    /**
+     * CHARTS LOGIC
+     */
+    function updateCharts() {
+        const now = new Date();
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(now.getDate() - 90);
+
+        // Filtrar datos de los últimos 90 días
+        const filteredSessions = state.sessions
+            .filter(s => new Date(s.date) >= ninetyDaysAgo)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        const labels = filteredSessions.map(s => s.date);
+        const distData = filteredSessions.map(s => s.distanceKm);
+        const weightData = filteredSessions.map(s => s.weightKg);
+
+        // Destruir instancias previas
+        if (distChartInstance) distChartInstance.destroy();
+        if (weightChartInstance) weightChartInstance.destroy();
+
+        // Gráfico Distancia
+        const ctxDist = document.getElementById('distChart').getContext('2d');
+        distChartInstance = new Chart(ctxDist, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Km',
+                    data: distData,
+                    borderColor: '#00f2fe',
+                    backgroundColor: 'rgba(0, 242, 254, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+
+        // Gráfico Peso
+        const ctxWeight = document.getElementById('weightChart').getContext('2d');
+        weightChartInstance = new Chart(ctxWeight, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Kg',
+                    data: weightData,
+                    borderColor: '#b624ff',
+                    backgroundColor: 'rgba(182, 36, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+    }
+
+    /**
+     * WIDGETS (frase motivacional y tip nutricional)
+     */
+    function updateWidgets() {
+        const randomMotivation = MOTIVATION_PHRASES[Math.floor(Math.random() * MOTIVATION_PHRASES.length)];
+        const randomNutrition = NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)];
+        document.getElementById('motivation-widget').innerHTML = `<p>✨ "${randomMotivation}"</p>`;
+        document.getElementById('nutrition-widget').innerHTML = `<p>🍏 ${randomNutrition}</p>`;
+    }
+</script>
+</body>
+</html>
