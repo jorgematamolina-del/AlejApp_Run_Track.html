@@ -79,7 +79,7 @@ Este proyecto se distribuye bajo la licencia **MIT**. Puedes usarlo, modificarlo
 
 ## 📧 Contacto
 
-Desarrollado por [Tu nombre / Alejandro] – [opcional: tu correo o perfil de GitHub]
+Desarrollado por Jorge_ccs –]
 
 ---
 
